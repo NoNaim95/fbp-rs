@@ -1,4 +1,9 @@
-use std::{sync::mpsc::channel, time::Duration};
+use crossbeam_channel::{bounded, unbounded, Receiver, RecvError, SendError, Sender};
+use std::time::Duration;
+
+use channels::receivers::*;
+use channels::senders::*;
+use scheduler::*;
 
 use fbp_rs::*;
 
@@ -7,40 +12,67 @@ pub struct Printer {
 }
 
 impl Component for Printer {
-    type I = String;
+    type I = (String, i32);
     type O = ();
-    fn step(&self, input: Self::I) -> Self::O {
-        println!("Today is {}, {}", self.date, input);
+    fn process(&self, input: Self::I) -> Self::O {
+        println!("name: {}, age: {}", input.0, input.1);
     }
 }
 
 pub struct StringFactory {}
-
 impl Component for StringFactory {
     type I = ();
-
     type O = String;
 
-    fn step(&self, input: Self::I) -> Self::O {
+    fn process(&self, input: Self::I) -> Self::O {
         String::from("Made in String Factory")
     }
 }
 
+pub struct AgeFactory {}
+impl Component for AgeFactory {
+    type I = ();
+    type O = i32;
+
+    fn process(&self, input: Self::I) -> Self::O {
+        std::thread::sleep(Duration::from_secs(1));
+        5
+    }
+}
+
+pub struct NestedFactory {
+    age_fac: AgeFactory,
+}
+
+impl Component for NestedFactory {
+    type I;
+    type O;
+
+    fn process(&self, input: Self::I) -> Self::O {
+        self.age_fac.process()
+    }
+}
+
 fn main() {
-    let (string_pipe_input, string_pipe_output) = channel();
-    let (printer_output_taker, rx) = channel();
+    let (age_pipe_begin, age_pipe_end) = bounded(4);
+    let age_process =
+        SchedulerImpl::create_process(AgeFactory {}, EmptyReceiver {}, age_pipe_begin);
+    let age_handle = std::thread::spawn(age_process);
 
-    let handle1 = std::thread::spawn(move || {
-        SchedulerImpl::run(Printer { date: "Monday" }, string_pipe_output, printer_output_taker);
-    });
+    let (string_pipe_begin, string_pipe_end) = bounded(4);
+    let string_factory_process =
+        SchedulerImpl::create_process(StringFactory {}, EmptyReceiver {}, string_pipe_begin);
+    let string_factory_handle = std::thread::spawn(string_factory_process);
 
-    string_pipe_input.send(String::from("This is a message")).unwrap();
-    std::thread::sleep(Duration::from_secs(1));
-    string_pipe_input.send(String::from("Hallo Lenz")).unwrap();
-    std::thread::sleep(Duration::from_secs(1));
-    string_pipe_input.send(String::from("Hallo Deni")).unwrap();
-    std::thread::sleep(Duration::from_secs(1));
-    rx.recv();
+    let printer_process = SchedulerImpl::create_process(
+        Printer { date: "Monday" },
+        (string_pipe_end, age_pipe_end),
+        EmptySender {},
+    );
+    std::thread::sleep(Duration::from_secs(5));
+    let printer_handle = std::thread::spawn(printer_process);
 
-    handle1.join().unwrap();
+    printer_handle.join();
+    string_factory_handle.join().unwrap();
+    age_handle.join().unwrap();
 }
