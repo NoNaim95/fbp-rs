@@ -5,13 +5,15 @@ use channels::receivers::*;
 use channels::senders::*;
 use process_factory::*;
 
+use components::*;
+
 use fbp_rs::*;
 
 pub struct Printer {
     pub date: &'static str,
 }
 
-impl Component for Printer {
+impl ProcessorComponent for Printer {
     type I = (String, i32);
     type O = ();
     fn process(&self, input: Self::I) -> Self::O {
@@ -20,23 +22,41 @@ impl Component for Printer {
 }
 
 pub struct StringFactory {}
-impl Component for StringFactory {
+impl ProcessorComponent for StringFactory {
     type I = ();
     type O = String;
 
-    fn process(&self, _input : Self::I) -> Self::O {
+    fn process(&self, _input: Self::I) -> Self::O {
         String::from("Made in String Factory")
     }
 }
 
 pub struct AgeFactory {}
-impl Component for AgeFactory {
+impl ProcessorComponent for AgeFactory {
     type I = ();
     type O = i32;
 
-    fn process(&self, _input : Self::I) -> Self::O {
+    fn process(&self, _input: Self::I) -> Self::O {
         std::thread::sleep(Duration::from_secs(1));
         5
+    }
+}
+
+pub struct Networker {}
+impl IocComponent for Networker {
+    type O = String;
+
+    fn run(&self, mut event_handler: EventHandler<Self::O>) -> ! {
+        loop {
+            event_handler.call(String::from("NICEIECNIENEIC"));
+        }
+    }
+
+    fn create_event_handler<T: 'static + Sender<Self::O>>(
+        sender: T,
+        f: impl Fn(&mut T, Self::O) + 'static,
+    ) -> EventHandler<Self::O> {
+        todo!()
     }
 }
 

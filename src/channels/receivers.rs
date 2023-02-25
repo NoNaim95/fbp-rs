@@ -18,8 +18,7 @@ impl<T, U, RT: Receiver<T>, RU: Receiver<U>> Receiver<(T, U)> for (RT, RU) {
     }
 }
 
-pub struct EmptyReceiver {}
-impl Receiver<()> for EmptyReceiver {
+impl Receiver<()> for () {
     fn recv(&self) -> Result<()> {
         Ok(())
     }

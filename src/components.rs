@@ -1,5 +1,3 @@
-use crate::channels::{receivers::*, senders::*};
-
 pub trait ProcessorComponent {
     type I;
     type O;
@@ -7,7 +5,11 @@ pub trait ProcessorComponent {
 }
 
 pub trait IocComponent {
-    type I;
     type O;
-    fn run(&self, input_channel: impl Receiver<Self::I>, output_channel: impl Sender<Self::O>);
+    fn run(self, event_handler: Box<dyn Fn(Self::O)>) -> !;
+}
+
+pub trait StaticIocComponent {
+    type O;
+    fn run(event_handler: Box<dyn Fn(Self::O)>) -> !;
 }

@@ -1,20 +1,40 @@
 use crate::channels::{receivers::*, senders::*};
-use crate::Component;
+use crate::ProcessorComponent;
 
-pub trait ProcessFactory {
-    fn create_process<T, I, O>(component: T, input_channel: I, output_channel: O) -> Box<dyn FnOnce() + Send>
-    where
-        T: Component + 'static + Send,
-        I: Receiver<T::I> + 'static + Send,
-        O: Sender<T::O> + 'static + Send;
+use crate::components::IocComponent;
+
+fn create_callback<T>(sender: impl Sender<T> + 'static) -> Box<dyn Fn(T)> {
+    Box::new(move |event: T| {
+        sender.send(event).unwrap();
+    })
 }
 
+pub trait ProcessFactory {
+    fn create_process<T, I, O>(
+        component: T,
+        input_channel: I,
+        output_channel: O,
+    ) -> Box<dyn FnOnce() + Send>
+    where
+        T: ProcessorComponent + 'static + Send,
+        I: Receiver<T::I> + 'static + Send,
+        O: Sender<T::O> + 'static + Send;
+
+    fn create_from_ioc<T, O>(component: T, output_channel: O) -> Box<dyn FnOnce() + Send>
+    where
+        T: IocComponent + 'static + Send,
+        O: Sender<T::O> + 'static + Send;
+}
 pub struct ProcessFactoryImpl {}
 
 impl ProcessFactory for ProcessFactoryImpl {
-    fn create_process<T, I, O>(component: T, input_channel: I, output_channel: O) -> Box<dyn FnOnce() + Send>
+    fn create_process<T, I, O>(
+        component: T,
+        input_channel: I,
+        output_channel: O,
+    ) -> Box<dyn FnOnce() + Send>
     where
-        T: Component + 'static + Send,
+        T: ProcessorComponent + 'static + Send,
         I: Receiver<T::I> + 'static + Send,
         O: Sender<T::O> + 'static + Send,
     {
@@ -26,5 +46,14 @@ impl ProcessFactory for ProcessFactoryImpl {
             output_channel.send(o).unwrap();
         })
     }
-}
 
+    fn create_from_ioc<T, O>(component: T, output_channel: O) -> Box<dyn FnOnce() + Send>
+    where
+        T: IocComponent + 'static + Send,
+        O: Sender<T::O> + 'static + Send,
+    {
+        Box::new(move || {
+            component.run(create_callback(output_channel));
+        })
+    }
+}

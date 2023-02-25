@@ -7,8 +7,7 @@ pub trait Sender<T> {
 
 impl<T> Sender<T> for crossbeam::Sender<T> {
     fn send(&self, t: T) -> Result<()> {
-        let x = self.send(t).map_err(|_| anyhow!("Receiver is gone"))?;
-        Ok(x)
+        self.send(t).map_err(|_| anyhow!("Receiver is gone"))
     }
 }
 
@@ -20,8 +19,7 @@ impl<T, U, ST: Sender<T>, SU: Sender<U>> Sender<(T, U)> for (ST, SU) {
     }
 }
 
-pub struct EmptySender {}
-impl Sender<()> for EmptySender {
+impl Sender<()> for () {
     fn send(&self, _: ()) -> Result<()> {
         Ok(())
     }
