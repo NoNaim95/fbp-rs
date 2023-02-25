@@ -1,13 +1,8 @@
 use crossbeam_channel::bounded;
 use std::time::Duration;
 
-use channels::receivers::*;
-use channels::senders::*;
-use process_factory::*;
-
-use components::*;
-
 use fbp_rs::*;
+use process_factory::*;
 
 pub struct Printer {
     pub date: &'static str,
@@ -42,39 +37,20 @@ impl ProcessorComponent for AgeFactory {
     }
 }
 
-pub struct Networker {}
-impl IocComponent for Networker {
-    type O = String;
-
-    fn run(&self, mut event_handler: EventHandler<Self::O>) -> ! {
-        loop {
-            event_handler.call(String::from("NICEIECNIENEIC"));
-        }
-    }
-
-    fn create_event_handler<T: 'static + Sender<Self::O>>(
-        sender: T,
-        f: impl Fn(&mut T, Self::O) + 'static,
-    ) -> EventHandler<Self::O> {
-        todo!()
-    }
-}
-
 fn main() {
     let (age_pipe_begin, age_pipe_end) = bounded(4);
-    let age_process =
-        ProcessFactoryImpl::create_process(AgeFactory {}, EmptyReceiver {}, age_pipe_begin);
+    let age_process = ProcessFactoryImpl::create_process(AgeFactory {}, (), age_pipe_begin);
     let age_handle = std::thread::spawn(age_process);
 
     let (string_pipe_begin, string_pipe_end) = bounded(4);
     let string_factory_process =
-        ProcessFactoryImpl::create_process(StringFactory {}, EmptyReceiver {}, string_pipe_begin);
+        ProcessFactoryImpl::create_process(StringFactory {}, (), string_pipe_begin);
     let string_factory_handle = std::thread::spawn(string_factory_process);
 
     let printer_process = ProcessFactoryImpl::create_process(
         Printer { date: "Monday" },
         (string_pipe_end, age_pipe_end),
-        EmptySender {},
+        (),
     );
     std::thread::sleep(Duration::from_secs(5));
     let printer_handle = std::thread::spawn(printer_process);
