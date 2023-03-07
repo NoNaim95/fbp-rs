@@ -1,61 +1,54 @@
-use crossbeam_channel::bounded;
-use std::time::Duration;
+use crossbeam_channel::unbounded;
+
+use fbp_rs::components::Component;
+use udp_proxy::packet::Packet;
+use udp_proxy::ProxyServer;
 
 use fbp_rs::*;
 use process_factory::*;
 
-pub struct Printer {
-    pub date: &'static str,
+pub struct IocNetworker {
+    proxy: ProxyServer,
 }
 
-impl ProcessorComponent for Printer {
-    type I = (String, i32);
+impl Component for IocNetworker{
+    type I = ();
+    type O = Packet;
+}
+
+impl IocGeneratorComponent for IocNetworker {
+    fn run(self, event_handler: Box<dyn Fn(Self::O)>) -> ! {
+        self.proxy.run(event_handler);
+    }
+}
+
+pub struct Logger {}
+
+impl Component for Logger{
+    type I = Packet;
     type O = ();
+}
+
+impl ProcessorComponent for Logger {
     fn process(&self, input: Self::I) -> Self::O {
-        println!("name: {}, age: {}", input.0, input.1);
-    }
-}
-
-pub struct StringFactory {}
-impl ProcessorComponent for StringFactory {
-    type I = ();
-    type O = String;
-
-    fn process(&self, _input: Self::I) -> Self::O {
-        String::from("Made in String Factory")
-    }
-}
-
-pub struct AgeFactory {}
-impl ProcessorComponent for AgeFactory {
-    type I = ();
-    type O = i32;
-
-    fn process(&self, _input: Self::I) -> Self::O {
-        std::thread::sleep(Duration::from_secs(1));
-        5
+        dbg!(input.data);
     }
 }
 
 fn main() {
-    let (age_pipe_begin, age_pipe_end) = bounded(4);
-    let age_process = ProcessFactoryImpl::create_process(AgeFactory {}, (), age_pipe_begin);
-    let age_handle = std::thread::spawn(age_process);
+    let (network_pipe_begin, network_pipe_end) = unbounded();
+    let (socket, client) = ProxyServer::get_client(4444);
+    let network_component = IocNetworker {
+        proxy: ProxyServer::new(socket, "103.172.92.234:28763".parse().unwrap(), client),
+    };
+    let network_process =
+        ProcessFactoryImpl::create_from_ioc_generator(network_component, network_pipe_begin);
+    let networker_handle = std::thread::spawn(network_process);
 
-    let (string_pipe_begin, string_pipe_end) = bounded(4);
-    let string_factory_process =
-        ProcessFactoryImpl::create_process(StringFactory {}, (), string_pipe_begin);
-    let string_factory_handle = std::thread::spawn(string_factory_process);
+    let logger_component = Logger{};
+    let logger_process = ProcessFactoryImpl::create_process(logger_component, network_pipe_end, ());
+    let logger_handle = std::thread::spawn(logger_process);
 
-    let printer_process = ProcessFactoryImpl::create_process(
-        Printer { date: "Monday" },
-        (string_pipe_end, age_pipe_end),
-        (),
-    );
-    std::thread::sleep(Duration::from_secs(5));
-    let printer_handle = std::thread::spawn(printer_process);
-
-    printer_handle.join().unwrap();
-    string_factory_handle.join().unwrap();
-    age_handle.join().unwrap();
+    networker_handle.join().unwrap();
+    logger_handle.join().unwrap();
 }

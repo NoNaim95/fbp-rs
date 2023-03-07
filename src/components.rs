@@ -1,15 +1,16 @@
-pub trait ProcessorComponent {
+pub trait Component {
     type I;
     type O;
+}
+
+pub trait ProcessorComponent : Component{
     fn process(&self, input: Self::I) -> Self::O;
 }
 
-pub trait IocComponent {
-    type O;
+pub trait IocGeneratorComponent : Component<I = ()>{
     fn run(self, event_handler: Box<dyn Fn(Self::O)>) -> !;
 }
 
-pub trait StaticIocComponent {
-    type O;
-    fn run(event_handler: Box<dyn Fn(Self::O)>) -> !;
-}
+//pub trait StaticIocComponent  : Component<I = ()> {
+//    fn run(event_handler: Box<dyn Fn(Self::O)>) -> !;
+//}
