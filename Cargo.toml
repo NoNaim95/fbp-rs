@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 crossbeam-channel = "0.5.6"
 anyhow = "1.0.69"
-udp_proxy = { path = "/home/deni/programming/rust/udp_proxy/" }
+
+[dev-dependencies]
+udp_proxy = { git = "https://github.com/NoNaim95/udp_proxy", branch = "master" }
