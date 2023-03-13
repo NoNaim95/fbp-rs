@@ -11,7 +11,7 @@ pub struct IocNetworker {
     proxy: ProxyServer,
 }
 
-impl Component for IocNetworker{
+impl Component for IocNetworker {
     type I = ();
     type O = Packet;
 }
@@ -24,7 +24,7 @@ impl IocGeneratorComponent for IocNetworker {
 
 pub struct Logger {}
 
-impl Component for Logger{
+impl Component for Logger {
     type I = Packet;
     type O = ();
 }
@@ -45,7 +45,7 @@ fn main() {
         ProcessFactoryImpl::create_from_ioc_generator(network_component, network_pipe_begin);
     let networker_handle = std::thread::spawn(network_process);
 
-    let logger_component = Logger{};
+    let logger_component = Logger {};
     let logger_process = ProcessFactoryImpl::create_process(logger_component, network_pipe_end, ());
     let logger_handle = std::thread::spawn(logger_process);
 
