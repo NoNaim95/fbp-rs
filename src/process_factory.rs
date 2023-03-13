@@ -29,7 +29,7 @@ pub struct ProcessFactoryImpl {}
 
 impl ProcessFactory for ProcessFactoryImpl {
     fn create_process<T, I, O>(
-        component: T,
+        mut component: T,
         input_channel: I,
         output_channel: O,
     ) -> Box<dyn FnOnce() + Send>
