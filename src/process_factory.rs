@@ -22,7 +22,7 @@ pub trait ProcessFactory {
 
     fn create_from_ioc_generator<T, O>(component: T, output_channel: O) -> Box<dyn FnOnce() + Send>
     where
-        T: IocGeneratorComponent+ 'static + Send,
+        T: IocGeneratorComponent + 'static + Send,
         O: Sender<T::O> + 'static + Send;
 }
 pub struct ProcessFactoryImpl {}

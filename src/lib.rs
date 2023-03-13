@@ -4,4 +4,4 @@ pub mod channels;
 pub mod components;
 pub mod process_factory;
 pub mod scheduler;
-pub mod connectable;
+pub mod component_registry;
