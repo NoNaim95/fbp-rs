@@ -4,7 +4,7 @@ pub trait Component {
 }
 
 pub trait ProcessorComponent: Component {
-    fn process(&self, input: Self::I) -> Self::O;
+    fn process(&mut self, input: Self::I) -> Self::O;
 }
 
 pub trait IocGeneratorComponent: Component<I = ()> {
